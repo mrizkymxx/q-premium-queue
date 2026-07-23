@@ -1,0 +1,49 @@
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.dart_tool/
+*.iml
+.idea/
+.metadata
+
+# Node / Playwright test
+node_modules/
+test_e2e.js
+package.json
+package-lock.json
+
+# Android build artifacts
+*.apk
+*.aab
+android/.gradle/
+android/local.properties
+android/app/debug
+android/app/profile
+android/app/release
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+
+# Web
+build/web/
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+
+# Build output
+build/
+
+# Supabase
+supabase/.branches
+
+# OS files
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.class
