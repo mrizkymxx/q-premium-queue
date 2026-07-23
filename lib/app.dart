@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/theme_config.dart';
 import 'providers/queue_provider.dart';
-import 'screens/device_selection_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/operator_dashboard_screen.dart';
 import 'screens/public_monitor_screen.dart';
 import 'screens/registration_screen.dart';
@@ -21,7 +21,7 @@ class QPremiumApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Q-PREMIUM — Sistem Antrian Digital',
         theme: AppTheme.materialTheme,
-        home: const DeviceSelectionScreen(),
+        home: const LoginScreen(),
         routes: {
           '/dashboard': (_) => const OperatorDashboardScreen(),
           '/monitor': (_) => const PublicMonitorScreen(),
