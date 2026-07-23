@@ -102,6 +102,34 @@ class QueueProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sinkronisasi manual jika realtime gagal atau state stale.
+  Future<void> syncData() async {
+    try {
+      final todayStart = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+      );
+
+      final response = await SupabaseConfig.client
+          .from('queue_transactions')
+          .select()
+          .gte('created_at', todayStart.toIso8601String())
+          .order('queue_number', ascending: true);
+          
+      final List<dynamic> raw = response as List<dynamic>;
+      _transactions = raw
+          .map((json) => QueueTransaction.fromJson(json as Map<String, dynamic>))
+          .toList();
+          
+      _currentCalling = _resolveCurrentCalling();
+      _error = null;
+    } catch (e) {
+      _error = 'Gagal sinkronisasi data: $e';
+    }
+    notifyListeners();
+  }
+
   QueueTransaction? _resolveCurrentCalling() {
     for (final t in _transactions) {
       if (t.status == QueueStatus.calling) return t;
@@ -136,6 +164,7 @@ class QueueProvider extends ChangeNotifier {
       return QueueTransaction.fromJson(raw.first as Map<String, dynamic>);
     } catch (e) {
       _error = 'Gagal mendaftar: ${e.toString()}';
+      await syncData(); // Sinkronisasi ulang untuk jaga-jaga
       return null;
     } finally {
       _isLoading = false;
@@ -198,7 +227,8 @@ class QueueProvider extends ChangeNotifier {
 
       return called;
     } catch (e) {
-      _error = 'Gagal memanggil antrian: ${e.toString()}';
+      _error = 'Gagal memanggil antrian (data mungkin tidak sinkron). Memperbarui data...';
+      await syncData(); // Sinkronisasi state dari server jika terjadi error (misal: stale state trigger P0001)
       return null;
     } finally {
       _isLoading = false;
@@ -220,6 +250,7 @@ class QueueProvider extends ChangeNotifier {
       TTSHelper.cancel();
     } catch (e) {
       _error = 'Gagal menyelesaikan antrian: ${e.toString()}';
+      await syncData();
     }
     notifyListeners();
   }
@@ -235,6 +266,7 @@ class QueueProvider extends ChangeNotifier {
       TTSHelper.cancel();
     } catch (e) {
       _error = 'Gagal melewati antrian: ${e.toString()}';
+      await syncData();
     }
     notifyListeners();
   }
