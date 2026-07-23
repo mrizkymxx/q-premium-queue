@@ -6,6 +6,8 @@ import 'screens/device_selection_screen.dart';
 import 'screens/operator_dashboard_screen.dart';
 import 'screens/public_monitor_screen.dart';
 import 'screens/registration_screen.dart';
+import 'screens/mobile_registration_screen.dart';
+import 'screens/mobile_ticket_screen.dart';
 
 class QPremiumApp extends StatelessWidget {
   const QPremiumApp({super.key});
@@ -24,6 +26,17 @@ class QPremiumApp extends StatelessWidget {
           '/dashboard': (_) => const OperatorDashboardScreen(),
           '/monitor': (_) => const PublicMonitorScreen(),
           '/register': (_) => const RegistrationScreen(),
+          '/mobile-register': (_) => const MobileRegistrationScreen(),
+        },
+        onGenerateRoute: (settings) {
+          final uri = Uri.parse(settings.name ?? '');
+          if (uri.path == '/ticket') {
+            final id = uri.queryParameters['id'] ?? '';
+            return MaterialPageRoute(
+              builder: (_) => MobileTicketScreen(ticketId: id),
+            );
+          }
+          return null;
         },
         debugShowCheckedModeBanner: false,
       ),
