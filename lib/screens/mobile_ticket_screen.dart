@@ -6,6 +6,7 @@ import '../models/queue_transaction.dart';
 import '../providers/queue_provider.dart';
 import '../widgets/glass_nav_bar.dart';
 import '../utils/date_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MobileTicketScreen extends StatefulWidget {
   final String ticketId;
@@ -45,8 +46,10 @@ class _MobileTicketScreenState extends State<MobileTicketScreen> {
           if (ticket.status == QueueStatus.calling) {
             return _buildCallingState(ticket);
           } else if (ticket.status == QueueStatus.completed) {
+            _clearActiveTicket();
             return _buildCompletedState();
           } else if (ticket.status == QueueStatus.skipped) {
+            _clearActiveTicket();
             return _buildSkippedState();
           }
 
@@ -72,6 +75,11 @@ class _MobileTicketScreenState extends State<MobileTicketScreen> {
         },
       ),
     );
+  }
+
+  void _clearActiveTicket() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('active_ticket_id');
   }
 
   Widget _buildCallingState(QueueTransaction ticket) {

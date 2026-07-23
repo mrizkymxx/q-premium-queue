@@ -29,7 +29,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   void _updateQrCode() {
     setState(() {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      _qrUrl = '${Uri.base.origin}/mobile-register?t=$timestamp';
+      // Gunakan URL Web Vercel secara langsung karena Uri.base.origin akan crash (StateError) di Android
+      _qrUrl = 'https://qpremium.vercel.app/mobile-register?t=$timestamp';
     });
   }
 

@@ -6,8 +6,23 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  usePathUrlStrategy();
-  await initializeDateFormatting('id', null);
-  await SupabaseConfig.initialize();
-  runApp(const QPremiumApp());
+  try {
+    usePathUrlStrategy();
+    await initializeDateFormatting('id', null);
+    await SupabaseConfig.initialize();
+    runApp(const QPremiumApp());
+  } catch (e, stackTrace) {
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: SingleChildScrollView(
+            child: Text(
+              "FATAL ERROR ON STARTUP:\n$e\n\n$stackTrace",
+              style: const TextStyle(color: Colors.red, fontSize: 16),
+            ),
+          ),
+        ),
+      ),
+    ));
+  }
 }

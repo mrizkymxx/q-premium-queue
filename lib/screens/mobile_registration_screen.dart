@@ -5,6 +5,8 @@ import '../config/theme_config.dart';
 import '../providers/queue_provider.dart';
 import '../widgets/glass_nav_bar.dart';
 import '../widgets/haptic_button.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/queue_transaction.dart';
 
 class MobileRegistrationScreen extends StatefulWidget {
   const MobileRegistrationScreen({super.key});
@@ -22,6 +24,27 @@ class _MobileRegistrationScreenState extends State<MobileRegistrationScreen> {
   @override
   void initState() {
     super.initState();
+    _checkActiveTicketOrToken();
+  }
+
+  void _checkActiveTicketOrToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final activeId = prefs.getString('active_ticket_id');
+    
+    if (activeId != null && mounted) {
+      // Periksa apakah tiket masih aktif di Supabase
+      final provider = context.read<QueueProvider>();
+      await provider.syncData();
+      final activeTicket = provider.transactions.where((t) => t.id == activeId).firstOrNull;
+      
+      if (activeTicket != null && (activeTicket.status == QueueStatus.waiting || activeTicket.status == QueueStatus.calling)) {
+         if (mounted) Navigator.of(context).pushReplacementNamed('/ticket?id=$activeId');
+         return;
+      } else {
+         await prefs.remove('active_ticket_id');
+      }
+    }
+    
     _checkSecurityToken();
   }
 
@@ -31,20 +54,20 @@ class _MobileRegistrationScreenState extends State<MobileRegistrationScreen> {
     final tParam = uri.queryParameters['t'];
 
     if (tParam == null) {
-      _isExpired = true;
+      if (mounted) setState(() => _isExpired = true);
       return;
     }
 
     final int? timestamp = int.tryParse(tParam);
     if (timestamp == null) {
-      _isExpired = true;
+      if (mounted) setState(() => _isExpired = true);
       return;
     }
 
     final now = DateTime.now().millisecondsSinceEpoch;
     // Allow up to 45 seconds of leeway from when the QR was generated
     if (now - timestamp > 45000) {
-      _isExpired = true;
+      if (mounted) setState(() => _isExpired = true);
     }
   }
 
@@ -77,6 +100,9 @@ class _MobileRegistrationScreenState extends State<MobileRegistrationScreen> {
     if (!mounted) return;
 
     if (ticket != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('active_ticket_id', ticket.id);
+      
       setState(() {
         _isSubmitting = false;
         _nameController.clear();

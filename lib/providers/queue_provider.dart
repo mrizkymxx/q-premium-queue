@@ -78,18 +78,16 @@ class QueueProvider extends ChangeNotifier {
   }
 
   void _onStreamData(List<Map<String, dynamic>> data) {
-    // Filter hanya transaksi hari ini (mulai tengah malam lokal)
-    final todayStart = DateTime(
-      DateTime.now().year,
-      DateTime.now().month,
-      DateTime.now().day,
-    );
+    // Filter hanya transaksi hari ini (mulai tengah malam lokal, dikonversi ke UTC agar cocok dengan created_at)
+    final nowLocal = DateTime.now();
+    final todayStartLocal = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
+    final todayStartUtc = todayStartLocal.toUtc();
 
     _transactions = data
         .map((json) => QueueTransaction.fromJson(json))
         .where((t) =>
-            t.createdAt.isAfter(todayStart) ||
-            t.createdAt.isAtSameMomentAs(todayStart))
+            t.createdAt.isAfter(todayStartUtc) ||
+            t.createdAt.isAtSameMomentAs(todayStartUtc))
         .toList();
 
     _currentCalling = _resolveCurrentCalling();
@@ -102,19 +100,16 @@ class QueueProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sinkronisasi manual jika realtime gagal atau state stale.
   Future<void> syncData() async {
     try {
-      final todayStart = DateTime(
-        DateTime.now().year,
-        DateTime.now().month,
-        DateTime.now().day,
-      );
+      final nowLocal = DateTime.now();
+      final todayStartLocal = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
+      final todayStartUtc = todayStartLocal.toUtc();
 
       final response = await SupabaseConfig.client
           .from('queue_transactions')
           .select()
-          .gte('created_at', todayStart.toIso8601String())
+          .gte('created_at', todayStartUtc.toIso8601String())
           .order('queue_number', ascending: true);
           
       final List<dynamic> raw = response as List<dynamic>;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/theme_config.dart';
 import 'device_selection_screen.dart';
 
@@ -15,6 +16,20 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isError = false;
   
   final String _correctPassword = 'rizkyganteng';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkActiveTicket();
+  }
+
+  void _checkActiveTicket() async {
+    final prefs = await SharedPreferences.getInstance();
+    final activeId = prefs.getString('active_ticket_id');
+    if (activeId != null && mounted) {
+      Navigator.of(context).pushReplacementNamed('/ticket?id=$activeId');
+    }
+  }
 
   void _handleLogin() {
     if (_passwordController.text == _correctPassword) {
