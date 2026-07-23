@@ -21,6 +21,7 @@ class _MobileTicketScreenState extends State<MobileTicketScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<QueueProvider>().syncData();
       context.read<QueueProvider>().startRealtimeSubscription();
     });
   }
@@ -29,31 +30,34 @@ class _MobileTicketScreenState extends State<MobileTicketScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
-      body: Column(
-        children: [
-          const GlassNavBar(title: 'Tiket Antrian Digital'),
-          Expanded(
-            child: Consumer<QueueProvider>(
-              builder: (context, provider, child) {
-                // Find the ticket
-                final ticketIndex = provider.transactions.indexWhere((t) => t.id == widget.ticketId);
-                
-                if (ticketIndex == -1) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: AppTheme.gold),
-                  );
-                }
+      body: Consumer<QueueProvider>(
+        builder: (context, provider, child) {
+          final ticketIndex = provider.transactions.indexWhere((t) => t.id == widget.ticketId);
+          
+          if (ticketIndex == -1) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppTheme.gold),
+            );
+          }
 
-                final ticket = provider.transactions[ticketIndex];
-                
-                // Calculate queue ahead
-                int queueAhead = 0;
-                if (ticket.status == QueueStatus.waiting) {
-                  queueAhead = provider.waitingList.indexWhere((t) => t.id == ticket.id);
-                  if (queueAhead == -1) queueAhead = 0; // fallback
-                }
+          final ticket = provider.transactions[ticketIndex];
+          
+          if (ticket.status == QueueStatus.calling) {
+            return _buildCallingState(ticket);
+          } else if (ticket.status == QueueStatus.completed) {
+            return _buildCompletedState();
+          } else if (ticket.status == QueueStatus.skipped) {
+            return _buildSkippedState();
+          }
 
-                return Center(
+          int queueAhead = provider.waitingList.indexWhere((t) => t.id == ticket.id);
+          if (queueAhead == -1) queueAhead = 0;
+
+          return Column(
+            children: [
+              const GlassNavBar(title: 'Tiket Antrian Digital'),
+              Expanded(
+                child: Center(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
                     child: _MobileTicketCard(
@@ -61,10 +65,155 @@ class _MobileTicketScreenState extends State<MobileTicketScreen> {
                       queueAhead: queueAhead,
                     ),
                   ),
-                );
-              },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCallingState(QueueTransaction ticket) {
+    return Container(
+      width: double.infinity,
+      color: AppTheme.gold.withValues(alpha: 0.1),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.notifications_active,
+            size: 120,
+            color: AppTheme.gold,
+          )
+          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+          .scaleXY(begin: 0.9, end: 1.1, duration: 600.ms)
+          .shake(hz: 3, duration: 600.ms),
+          
+          const SizedBox(height: 40),
+          
+          Text(
+            'GILIRAN ANDA!',
+            style: AppTheme.headlineLarge(color: AppTheme.gold),
+          ).animate().fadeIn().slideY(begin: 0.2, end: 0),
+          
+          const SizedBox(height: 16),
+          
+          Text(
+            'Nomor: ${ticket.displayNumber}',
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 48,
+              fontWeight: FontWeight.w900,
+              color: AppTheme.textPrimary,
             ),
-          ),
+          ).animate().fadeIn(delay: 200.ms).scaleXY(begin: 0.8, end: 1),
+          
+          const SizedBox(height: 32),
+          
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: const Text(
+              'Silakan segera menuju ke Loket Pelayanan',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ).animate().fadeIn(delay: 400.ms),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletedState() {
+    return Container(
+      width: double.infinity,
+      color: AppTheme.darkBg,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.success.withValues(alpha: 0.1),
+            ),
+            child: const Icon(
+              Icons.check_circle_outline,
+              size: 80,
+              color: AppTheme.success,
+            ),
+          ).animate().scaleXY(begin: 0, end: 1, duration: 600.ms, curve: Curves.easeOutBack),
+          
+          const SizedBox(height: 32),
+          
+          Text(
+            'Pelayanan Selesai',
+            style: AppTheme.headlineMedium(color: AppTheme.success),
+          ).animate().fadeIn(delay: 300.ms),
+          
+          const SizedBox(height: 16),
+          
+          const Text(
+            'Terima kasih telah berkunjung\ndan menggunakan layanan kami.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
+              color: AppTheme.textSecondary,
+              height: 1.5,
+            ),
+          ).animate().fadeIn(delay: 500.ms),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkippedState() {
+    return Container(
+      width: double.infinity,
+      color: AppTheme.darkBg,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.danger.withValues(alpha: 0.1),
+            ),
+            child: const Icon(
+              Icons.cancel_outlined,
+              size: 80,
+              color: AppTheme.danger,
+            ),
+          ).animate().scaleXY(begin: 0, end: 1, duration: 600.ms, curve: Curves.easeOutBack),
+          
+          const SizedBox(height: 32),
+          
+          Text(
+            'Antrian Terlewati',
+            style: AppTheme.headlineMedium(color: AppTheme.danger),
+          ).animate().fadeIn(delay: 300.ms),
+          
+          const SizedBox(height: 16),
+          
+          const Text(
+            'Mohon maaf, giliran Anda telah terlewat.\nSilakan mengambil nomor antrian baru.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 16,
+              color: AppTheme.textSecondary,
+              height: 1.5,
+            ),
+          ).animate().fadeIn(delay: 500.ms),
         ],
       ),
     );
@@ -85,23 +234,12 @@ class _MobileTicketCard extends StatelessWidget {
     String statusMessage;
     Color statusColor;
 
-    if (ticket.status == QueueStatus.completed) {
-      statusMessage = 'SELESAI DILAYANI';
-      statusColor = AppTheme.success;
-    } else if (ticket.status == QueueStatus.skipped) {
-      statusMessage = 'NOMOR DILEWATI';
-      statusColor = AppTheme.danger;
-    } else if (ticket.status == QueueStatus.calling) {
-      statusMessage = 'GILIRAN ANDA SEKARANG!';
-      statusColor = AppTheme.gold;
+    if (queueAhead == 0) {
+      statusMessage = 'GILIRAN ANDA BERIKUTNYA';
+      statusColor = AppTheme.goldLight;
     } else {
-      if (queueAhead == 0) {
-        statusMessage = 'GILIRAN ANDA BERIKUTNYA';
-        statusColor = AppTheme.goldLight;
-      } else {
-        statusMessage = '$queueAhead ANTRIAN DI DEPAN ANDA';
-        statusColor = AppTheme.textSecondary;
-      }
+      statusMessage = '$queueAhead ANTRIAN DI DEPAN ANDA';
+      statusColor = AppTheme.textSecondary;
     }
 
     return ConstrainedBox(
@@ -229,8 +367,7 @@ class _MobileTicketCard extends StatelessWidget {
                       letterSpacing: 1,
                     ),
                   ),
-                ).animate(target: ticket.status == QueueStatus.calling ? 1 : 0)
-                 .shimmer(duration: 2.seconds, color: AppTheme.textPrimary.withValues(alpha: 0.3)),
+                ),
               ],
             ),
           )
