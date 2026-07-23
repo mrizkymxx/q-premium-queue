@@ -26,16 +26,23 @@ class QPremiumApp extends StatelessWidget {
           '/dashboard': (_) => const OperatorDashboardScreen(),
           '/monitor': (_) => const PublicMonitorScreen(),
           '/register': (_) => const RegistrationScreen(),
-          '/mobile-register': (_) => const MobileRegistrationScreen(),
         },
         onGenerateRoute: (settings) {
           final uri = Uri.parse(settings.name ?? '');
+          
+          if (uri.path == '/mobile-register') {
+            return MaterialPageRoute(
+              builder: (_) => const MobileRegistrationScreen(),
+            );
+          }
+          
           if (uri.path == '/ticket') {
             final id = uri.queryParameters['id'] ?? '';
             return MaterialPageRoute(
               builder: (_) => MobileTicketScreen(ticketId: id),
             );
           }
+          
           return null;
         },
         debugShowCheckedModeBanner: false,
