@@ -324,6 +324,13 @@ class _OperatorDashboardScreenState extends State<OperatorDashboardScreen> {
               provider.completeCurrent(provider.currentCalling!.id),
         );
 
+        final recallBtn = HapticButton(
+          label: 'Panggil Ulang',
+          icon: Icons.volume_up_rounded,
+          variant: ButtonVariant.primary,
+          onPressed: () => provider.recallCurrent(),
+        );
+
         final callBtn = HapticButton(
           label: 'Panggil Berikutnya',
           icon: Icons.play_arrow_rounded,
@@ -346,6 +353,11 @@ class _OperatorDashboardScreenState extends State<OperatorDashboardScreen> {
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
+                child: recallBtn,
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
                 child: callBtn,
               ),
             ],
@@ -357,11 +369,13 @@ class _OperatorDashboardScreenState extends State<OperatorDashboardScreen> {
             if (hasCalling) ...[
               Expanded(child: skipBtn),
               const SizedBox(width: 10),
+              Expanded(child: recallBtn),
+              const SizedBox(width: 10),
               Expanded(child: completeBtn),
               const SizedBox(width: 10),
             ],
             Expanded(
-              flex: hasCalling ? 2 : 1,
+              flex: 1,
               child: callBtn,
             ),
           ],

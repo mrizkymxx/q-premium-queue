@@ -236,6 +236,13 @@ class QueueProvider extends ChangeNotifier {
     }
   }
 
+  /// Memanggil ulang pelanggan yang sedang dilayani (TTS Ulang).
+  void recallCurrent() {
+    if (_currentCalling != null) {
+      TTSHelper.announce(_currentCalling!.queuePrefix, _currentCalling!.queueNumber, counter: 1);
+    }
+  }
+
   /// Menyelesaikan transaksi yang sedang dipanggil.
   Future<void> completeCurrent(String id) async {
     _error = null;
