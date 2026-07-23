@@ -86,14 +86,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       setState(() => _countdown--);
       if (_countdown <= 0) {
         if (mounted) {
-          if (Navigator.canPop(context)) {
-            Navigator.of(context).pop();
-          } else {
-            setState(() {
-              _lastTicket = null;
-              _countdown = 12;
-            });
-          }
+          // Mode Kiosk: selalu kembalikan ke form pendaftaran, jangan pop ke dashboard
+          setState(() {
+            _lastTicket = null;
+            _countdown = 12;
+          });
         }
         return false;
       }
