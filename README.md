@@ -1,117 +1,54 @@
-# Q-PREMIUM — Sistem Manajemen Antrian Digital
+# 🌟 Q-PREMIUM (Sistem Antrean Cerdas)
 
-Aplikasi manajemen antrian real-time berbasis Flutter Web + Supabase, dirancang untuk lembaga kelas premium (perbankan, klinik, pelayanan publik terkemuka).
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
+</p>
 
-## Fitur Utama
+**Q-PREMIUM** adalah inovasi sistem manajemen antrean berbasis web dan perangkat bergerak (*mobile*) yang dirancang untuk menghilangkan penumpukan kustomer di ruang tunggu konvensional. Dibangun dengan kekuatan **Flutter** dan **Supabase Realtime**, sistem ini memungkinkan kustomer untuk mendaftar secara mandiri (*Kiosk*) dan memantau giliran mereka dari jarak jauh (*Live Tracking*).
 
-- **Dashboard Operator** — Kelola antrian, panggil pelanggan, tandai selesai / lewati
-- **Layar Monitor Publik** — Tampilan TV real-time dengan nomor antrian besar
-- **Kiosk Pendaftaran** — Pelanggan mandiri ambil nomor antrian
-- **Pengumuman Suara (TTS)** — Otomatis mengumumkan nomor via Web Speech API (Bahasa Indonesia)
-- **Real-time Sync** — Semua layar tersinkronisasi langsung via Supabase Realtime
-- **Statistik Harian** — Total, sedang dilayani, dan selesai hari ini
+---
 
-## Tech Stack
+## 💖 Dedikasi Khusus (Special Acknowledgement)
 
-| Layer | Teknologi |
-|---|---|
-| Framework | Flutter (Dart) — Web target |
-| State Management | Provider |
-| Backend / Database | Supabase (PostgreSQL + Realtime) |
-| Font | Inter (Google Fonts) |
-| Animasi | flutter_animate |
-| Deployment | Vercel |
+> *"Terima kasih banyak ya bu, atas bimbingan, kesabaran, dan ilmu yang telah Ibu berikan selama perkuliahan. Cara Ibu mengajar tidak hanya membantu saya memahami teori, tetapi juga memberikan wawasan yang lebih luas mengenai pengembangan perangkat lunak modern. Saya sangat menghargai dedikasi Ibu dalam membimbing mahasiswa. Semoga Ibu selalu diberikan kesehatan, kebahagiaan, dan kesuksesan dalam setiap langkah ily bu donaa"*
 
-## Setup & Menjalankan Lokal
+**Dosen Pengampu:** Alzena Dona Sabilla, M.Kom  
+**Dikembangkan Oleh:** Muhammad Rizky  
+**Mata Kuliah:** Pemrograman Perangkat Bergerak (UAS Genap 2026)
 
-### 1. Prasyarat
+---
 
-- Flutter SDK ≥ 3.0.0
-- Supabase project dengan tabel `queue_transactions`
+## ✨ Fitur Unggulan
 
-### 2. Environment Variables
+1. **📱 Kiosk Pendaftaran Mandiri**
+   Pelanggan cukup memasukkan nama mereka dan sistem akan menerbitkan nomor urut (*Virtual Ticket*).
+2. **🔊 Integrasi Text-to-Speech (TTS)**
+   Sistem memanggil nama pelanggan secara lantang melalui suara robot/mesin dari Dasbor Operator.
+3. **🛡️ Anti-Hilang Tiket (Session Persistence)**
+   Nomor antrean tidak akan lenyap meskipun *browser* tertutup atau dimuat ulang, berkat penerapan *SharedPreferences* yang menyimpan UUID secara lokal.
+4. **⚡ Sinkronisasi Real-Time**
+   Perubahan status layanan (Panggil / Selesai / Lewati) oleh Operator langsung terkirim seketika (*WebSocket*) ke layar pemantauan kustomer tanpa perlu memuat ulang halaman.
 
-Salin `.env.example` ke `.env` dan isi nilai:
+## 🚀 Teknologi yang Digunakan
+- **Frontend:** Flutter (Dart)
+- **Backend & Database:** Supabase (PostgreSQL)
+- **State Management:** Provider
+- **Penyimpanan Lokal:** SharedPreferences
+- **Layanan Suara:** flutter_tts
 
-```env
-SUPABASE_URL=https://xxxxxxxxxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
-```
+## 📂 Cara Menjalankan Proyek Secara Lokal
 
-### 3. Jalankan di Browser
+1. Kloning repositori ini.
+2. Buka terminal dan jalankan perintah:
+   ```bash
+   flutter pub get
+   ```
+3. Jalankan aplikasi di perangkat Chrome / Web:
+   ```bash
+   flutter run -d chrome
+   ```
 
-```bash
-flutter pub get
-
-flutter run -d chrome \
-  --dart-define=SUPABASE_URL=<url> \
-  --dart-define=SUPABASE_ANON_KEY=<key>
-```
-
-### 4. Build Produksi
-
-```bash
-bash build.sh
-```
-
-## Struktur Database (Supabase)
-
-### Tabel: `queue_transactions`
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | uuid (PK) | Auto-generated |
-| `created_at` | timestamptz | Waktu pendaftaran |
-| `customer_name` | text | Nama pelanggan |
-| `queue_number` | integer | Nomor urut (auto dari trigger) |
-| `queue_prefix` | text | Prefix kategori (default: 'A') |
-| `status` | text | `waiting` / `calling` / `completed` / `skipped` |
-| `called_at` | timestamptz | Waktu dipanggil |
-| `completed_at` | timestamptz | Waktu selesai |
-| `source` | text | Sumber pendaftaran (default: 'web') |
-
-### SQL yang Diperlukan
-
-Jalankan perintah ini di **SQL Editor** Supabase Anda:
-
-```sql
--- Aktifkan Supabase Realtime untuk tabel queue_transactions
-alter publication supabase_realtime add table queue_transactions;
--- (Opsional) Jika butuh data lama (old record) saat update/delete
-alter table queue_transactions replica identity full;
--- Hitung antrian di depan nomor tertentu
-create or replace function get_queue_ahead_count(target_number int)
-returns int as $$
-  select count(*)::int from queue_transactions
-  where status = 'waiting' and queue_number < target_number;
-$$ language sql;
-
--- Ambil antrian yang sedang dipanggil
-create or replace function get_current_calling()
-returns setof queue_transactions as $$
-  select * from queue_transactions
-  where status = 'calling'
-  order by called_at desc limit 1;
-$$ language sql;
-```
-
-## URL Screens
-
-| URL | Fungsi |
-|---|---|
-| `/` | Menu Pemilihan Perangkat (Device Selection) |
-| `/dashboard` | Dashboard Operator |
-| `/monitor` | Layar Monitor Publik (TV) |
-| `/register` | Kiosk Pendaftaran Mandiri |
-
-## Deploy ke Vercel
-
-Pastikan environment variables di Vercel Settings → Environment Variables:
-
-```
-SUPABASE_URL=...
-SUPABASE_ANON_KEY=...
-```
-
-Build command: `bash build.sh`  
-Output directory: `build/web`
+---
+*© 2026 Q-Premium Project. All Rights Reserved.*
