@@ -1,5 +1,5 @@
 name: q_premium
-description: "Q-PREMIUM Queue Management System"
+description: "Q-PREMIUM — Sistem Manajemen Antrian Digital Kelas Premium"
 publish_to: "none"
 
 version: 1.0.0+1
@@ -15,6 +15,8 @@ dependencies:
   intl: ^0.19.0
   cupertino_icons: ^1.0.8
   web: ^1.1.1
+  # google_fonts removed: loaded via CDN in web/index.html for web target
+  flutter_animate: ^4.5.0
 
 dev_dependencies:
   flutter_test:

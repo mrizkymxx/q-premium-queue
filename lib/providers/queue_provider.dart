@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:q_premium/config/supabase_config.dart';
 import 'package:q_premium/models/queue_transaction.dart';
+import 'package:q_premium/utils/tts_helper.dart';
 
 /// Manages queue state and exposes a reactive API for the UI layer.
 ///
@@ -12,14 +13,14 @@ import 'package:q_premium/models/queue_transaction.dart';
 ///
 /// ## State
 ///
-/// | Getter         | Type                        | Description                              |
-/// |----------------|-----------------------------|------------------------------------------|
-/// | `transactions` | `List<QueueTransaction>`    | All transactions visible to the stream.  |
-/// | `currentCalling` | `QueueTransaction?`      | The single entry being called, if any.   |
-/// | `waitingList`  | `List<QueueTransaction>`    | Subset of `transactions` with `waiting`. |
-/// | `canCallNext`  | `bool`                      | `true` when **no** entry is `calling`.   |
-/// | `isLoading`    | `bool`                      | `true` during register / call-next.      |
-/// | `error`        | `String?`                   | Last error message, cleared on success.  |
+/// | Getter           | Type                        | Description                              |
+/// |------------------|-----------------------------|------------------------------------------|
+/// | `transactions`   | `List<QueueTransaction>`    | Transaksi hari ini dari realtime stream. |
+/// | `currentCalling` | `QueueTransaction?`         | Satu entri dengan status `calling`.      |
+/// | `waitingList`    | `List<QueueTransaction>`    | Subset `transactions` dengan `waiting`.  |
+/// | `canCallNext`    | `bool`                      | `true` saat tidak ada yang `calling`.    |
+/// | `isLoading`      | `bool`                      | `true` selama proses register/call-next. |
+/// | `error`          | `String?`                   | Pesan error terakhir, dikosongkan saat sukses. |
 class QueueProvider extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Fields
@@ -40,15 +41,19 @@ class QueueProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Returns only the entries that are still waiting.
+  /// Statistik hari ini
+  int get totalToday => _transactions.length;
+  int get completedToday =>
+      _transactions.where((t) => t.status == QueueStatus.completed).length;
+  int get skippedToday =>
+      _transactions.where((t) => t.status == QueueStatus.skipped).length;
+  int get servedToday => completedToday + skippedToday;
+
+  /// Hanya entri yang masih menunggu.
   List<QueueTransaction> get waitingList =>
       _transactions.where((t) => t.status == QueueStatus.waiting).toList();
 
-  /// Whether a new customer can be called right now.
-  ///
-  /// This is `true` when **every** entry has a status other than `calling`.
-  /// When someone is already being called, the front-desk should not summon
-  /// another until the current one is completed or skipped.
+  /// Apakah pelanggan berikutnya bisa dipanggil.
   bool get canCallNext =>
       _transactions.every((t) => t.status != QueueStatus.calling);
 
@@ -56,20 +61,9 @@ class QueueProvider extends ChangeNotifier {
   // Realtime subscription
   // ---------------------------------------------------------------------------
 
-  /// Starts (or restarts) the realtime subscription.
+  /// Memulai (atau memulai ulang) realtime subscription.
   ///
-  /// The stream emits the full current data set immediately upon
-  /// subscription, then reflects any INSERT / UPDATE / DELETE in
-  /// near-real-time.  On every emission:
-  ///
-  ///  1. `_transactions` is replaced with deserialised entries.
-  ///  2. `_currentCalling` is derived from the local list (no extra RPC).
-  ///  3. `_error` is cleared.
-  ///  4. Listeners are notified.
-  ///
-  /// If the stream encounters an error, `_error` is set and listeners
-  /// are notified.  The subscription stays alive and may recover on the
-  /// next emission.
+  /// Hanya menampilkan data hari ini dengan filter client-side.
   void startRealtimeSubscription() {
     _subscription?.cancel();
 
@@ -84,8 +78,18 @@ class QueueProvider extends ChangeNotifier {
   }
 
   void _onStreamData(List<Map<String, dynamic>> data) {
+    // Filter hanya transaksi hari ini (mulai tengah malam lokal)
+    final todayStart = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+
     _transactions = data
         .map((json) => QueueTransaction.fromJson(json))
+        .where((t) =>
+            t.createdAt.isAfter(todayStart) ||
+            t.createdAt.isAtSameMomentAs(todayStart))
         .toList();
 
     _currentCalling = _resolveCurrentCalling();
@@ -94,11 +98,10 @@ class QueueProvider extends ChangeNotifier {
   }
 
   void _onStreamError(Object error) {
-    _error = error.toString();
+    _error = 'Koneksi bermasalah: ${error.toString()}';
     notifyListeners();
   }
 
-  /// Returns the single transaction with `calling` status, or `null`.
   QueueTransaction? _resolveCurrentCalling() {
     for (final t in _transactions) {
       if (t.status == QueueStatus.calling) return t;
@@ -110,15 +113,9 @@ class QueueProvider extends ChangeNotifier {
   // Mutations
   // ---------------------------------------------------------------------------
 
-  /// Registers a new customer in the queue.
+  /// Mendaftarkan pelanggan baru ke antrian.
   ///
-  /// The [name] is sent to the `queue_transactions` table.  The
-  /// `queue_number` is auto-assigned by a database trigger.
-  ///
-  /// Returns the created [QueueTransaction] on success, or `null` on
-  /// failure (in which case [error] is populated).
-  ///
-  /// Sets [isLoading] to `true` for the duration of the request.
+  /// Mengembalikan [QueueTransaction] yang dibuat, atau `null` jika gagal.
   Future<QueueTransaction?> registerQueue(String name) async {
     _isLoading = true;
     _error = null;
@@ -132,13 +129,13 @@ class QueueProvider extends ChangeNotifier {
 
       final List<dynamic> raw = response as List<dynamic>;
       if (raw.isEmpty) {
-        _error = 'No data returned after insert.';
+        _error = 'Tidak ada data yang dikembalikan setelah pendaftaran.';
         return null;
       }
 
       return QueueTransaction.fromJson(raw.first as Map<String, dynamic>);
     } catch (e) {
-      _error = e.toString();
+      _error = 'Gagal mendaftar: ${e.toString()}';
       return null;
     } finally {
       _isLoading = false;
@@ -146,20 +143,12 @@ class QueueProvider extends ChangeNotifier {
     }
   }
 
-  /// Calls the next waiting customer to the counter.
+  /// Memanggil pelanggan berikutnya yang sedang menunggu ke loket.
   ///
-  /// **Precondition:** [canCallNext] must be `true` (no one else is
-  /// currently being called).  If the precondition is not met, `null` is
-  /// returned immediately and [error] is set.
-  ///
-  /// Finds the waiting entry with the lowest [queueNumber], updates its
-  /// `status` to `calling` and its `called_at` to the current server
-  /// moment, then returns the updated [QueueTransaction].
-  ///
-  /// Sets [isLoading] to `true` for the duration of the request.
+  /// Juga memicu pengumuman suara (TTS) setelah berhasil.
   Future<QueueTransaction?> callNext() async {
     if (!canCallNext) {
-      _error = 'Cannot call next — another customer is currently being served.';
+      _error = 'Tidak dapat memanggil — masih ada pelanggan yang sedang dilayani.';
       notifyListeners();
       return null;
     }
@@ -168,12 +157,12 @@ class QueueProvider extends ChangeNotifier {
         _transactions.where((t) => t.status == QueueStatus.waiting);
 
     if (waitingEntries.isEmpty) {
-      _error = 'No waiting customers to call.';
+      _error = 'Tidak ada antrian yang menunggu.';
       notifyListeners();
       return null;
     }
 
-    // Find the entry with the lowest queue number.
+    // Cari entri dengan nomor antrian terkecil.
     QueueTransaction firstWaiting = waitingEntries.first;
     for (final t in waitingEntries) {
       if (t.queueNumber < firstWaiting.queueNumber) {
@@ -197,13 +186,19 @@ class QueueProvider extends ChangeNotifier {
 
       final List<dynamic> raw = response as List<dynamic>;
       if (raw.isEmpty) {
-        _error = 'No data returned after update.';
+        _error = 'Tidak ada data yang dikembalikan setelah update.';
         return null;
       }
 
-      return QueueTransaction.fromJson(raw.first as Map<String, dynamic>);
+      final called =
+          QueueTransaction.fromJson(raw.first as Map<String, dynamic>);
+
+      // Umumkan melalui Text-to-Speech
+      TTSHelper.announce(called.queuePrefix, called.queueNumber, counter: 1);
+
+      return called;
     } catch (e) {
-      _error = e.toString();
+      _error = 'Gagal memanggil antrian: ${e.toString()}';
       return null;
     } finally {
       _isLoading = false;
@@ -211,11 +206,7 @@ class QueueProvider extends ChangeNotifier {
     }
   }
 
-  /// Completes the currently called transaction identified by [id].
-  ///
-  /// Sets `status` to `completed` and `completed_at` to the current
-  /// server moment via the database trigger.  Errors are silently
-  /// captured into [error].
+  /// Menyelesaikan transaksi yang sedang dipanggil.
   Future<void> completeCurrent(String id) async {
     _error = null;
     try {
@@ -226,16 +217,14 @@ class QueueProvider extends ChangeNotifier {
             'completed_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', id);
+      TTSHelper.cancel();
     } catch (e) {
-      _error = e.toString();
+      _error = 'Gagal menyelesaikan antrian: ${e.toString()}';
     }
     notifyListeners();
   }
 
-  /// Skips the currently called transaction identified by [id].
-  ///
-  /// Sets `status` to `skipped`.  No timestamp is recorded.  Errors
-  /// are silently captured into [error].
+  /// Melewati transaksi yang sedang dipanggil.
   Future<void> skipCurrent(String id) async {
     _error = null;
     try {
@@ -243,8 +232,9 @@ class QueueProvider extends ChangeNotifier {
           .from('queue_transactions')
           .update({'status': 'skipped'})
           .eq('id', id);
+      TTSHelper.cancel();
     } catch (e) {
-      _error = e.toString();
+      _error = 'Gagal melewati antrian: ${e.toString()}';
     }
     notifyListeners();
   }

@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/theme_config.dart';
 import 'providers/queue_provider.dart';
@@ -15,14 +15,15 @@ class QPremiumApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => QueueProvider()),
       ],
-      child: CupertinoApp(
-        title: 'Q-PREMIUM',
-        theme: AppTheme.cupertinoTheme,
+      child: MaterialApp(
+        title: 'Q-PREMIUM — Sistem Antrian Digital',
+        theme: AppTheme.materialTheme,
         home: const OperatorDashboardScreen(),
         routes: {
           '/monitor': (_) => const PublicMonitorScreen(),
           '/register': (_) => const RegistrationScreen(),
         },
+        debugShowCheckedModeBanner: false,
       ),
     );
   }

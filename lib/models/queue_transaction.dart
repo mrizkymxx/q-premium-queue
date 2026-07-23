@@ -33,8 +33,6 @@ class QueueTransaction {
   });
 
   /// Creates a [QueueTransaction] from a Supabase / JSON response map.
-  ///
-  /// Expects snake_case keys matching the Supabase table columns.
   factory QueueTransaction.fromJson(Map<String, dynamic> json) {
     return QueueTransaction(
       id: json['id'] as String,
@@ -71,20 +69,21 @@ class QueueTransaction {
     };
   }
 
-  /// Human-readable ticket identifier, e.g. "A-042".
-  String get displayNumber => '$queuePrefix-$queueNumber';
+  /// Human-readable ticket identifier with zero-padding, e.g. "A-042".
+  String get displayNumber =>
+      '$queuePrefix-${queueNumber.toString().padLeft(3, '0')}';
 
   /// Semantic color associated with the current [status].
   Color get statusColor {
     switch (status) {
       case QueueStatus.waiting:
-        return const Color(0xFFEAB308);
+        return const Color(0xFFFFD60A);
       case QueueStatus.calling:
-        return const Color(0xFF22C55E);
+        return const Color(0xFF30D158);
       case QueueStatus.completed:
-        return const Color(0xFF9CA3AF);
+        return const Color(0xFF8E8E93);
       case QueueStatus.skipped:
-        return const Color(0xFF6B7280);
+        return const Color(0xFF48484A);
     }
   }
 }

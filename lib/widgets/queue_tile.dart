@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../config/theme_config.dart';
 import '../models/queue_transaction.dart';
 
+/// Premium dark queue tile with status chip and consistent number format.
 class QueueTile extends StatelessWidget {
   final int? queueNumber;
   final String? queuePrefix;
@@ -21,75 +23,97 @@ class QueueTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayNumber =
         '${queuePrefix ?? 'A'}-${queueNumber?.toString().padLeft(3, '0') ?? '---'}';
-
-    final statusLabels = {
-      QueueStatus.waiting: 'Menunggu',
-      QueueStatus.calling: 'Dipanggil',
-      QueueStatus.completed: 'Selesai',
-      QueueStatus.skipped: 'Dilewati',
-    };
-
     final effectiveStatus = status ?? QueueStatus.waiting;
 
-    Color statusColor;
-    switch (effectiveStatus) {
-      case QueueStatus.waiting:
-        statusColor = const Color(0xFFEAB308);
-      case QueueStatus.calling:
-        statusColor = const Color(0xFF22C55E);
-      case QueueStatus.completed:
-        statusColor = const Color(0xFF9CA3AF);
-      case QueueStatus.skipped:
-        statusColor = const Color(0xFF6B7280);
-    }
+    final (statusLabel, statusColor, statusBg) = switch (effectiveStatus) {
+      QueueStatus.waiting =>
+        ('Menunggu', AppTheme.warning, AppTheme.warningDim),
+      QueueStatus.calling =>
+        ('Dipanggil', AppTheme.success, AppTheme.successDim),
+      QueueStatus.completed =>
+        ('Selesai', AppTheme.textSecondary, AppTheme.cardColor),
+      QueueStatus.skipped =>
+        ('Dilewati', AppTheme.textMuted, AppTheme.surfaceColor),
+    };
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: isCurrent
-            ? const Color(0xFF22C55E).withValues(alpha: 0.1)
-            : Colors.white,
-        border: isCurrent
-            ? Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3))
-            : null,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: statusColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              displayNumber,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                customerName ?? '',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Text(
-              statusLabels[effectiveStatus] ?? '',
-              style: TextStyle(
-                color: statusColor,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+        borderRadius: BorderRadius.circular(14),
+        color: isCurrent ? AppTheme.successDim : AppTheme.cardColor,
+        border: Border.all(
+          color: isCurrent
+              ? AppTheme.success.withValues(alpha: 0.3)
+              : AppTheme.borderColor,
+          width: 0.5,
         ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+              boxShadow: effectiveStatus == QueueStatus.waiting ||
+                      effectiveStatus == QueueStatus.calling
+                  ? [
+                      BoxShadow(
+                        color: statusColor.withValues(alpha: 0.4),
+                        blurRadius: 6,
+                      )
+                    ]
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            displayNumber,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              customerName ?? '',
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: AppTheme.textSecondary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusBg,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: statusColor.withValues(alpha: 0.3),
+                width: 0.5,
+              ),
+            ),
+            child: Text(
+              statusLabel,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: statusColor,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

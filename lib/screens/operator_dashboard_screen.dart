@@ -1,11 +1,15 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import '../config/theme_config.dart';
 import '../providers/queue_provider.dart';
 import '../widgets/glass_nav_bar.dart';
 import '../widgets/calling_card.dart';
 import '../widgets/haptic_button.dart';
 import '../widgets/queue_tile.dart';
+import '../widgets/stat_chip.dart';
+import 'public_monitor_screen.dart';
+import 'registration_screen.dart';
 
 class OperatorDashboardScreen extends StatefulWidget {
   const OperatorDashboardScreen({super.key});
@@ -26,129 +30,234 @@ class _OperatorDashboardScreenState extends State<OperatorDashboardScreen> {
     });
   }
 
+  void _navigateToMonitor() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PublicMonitorScreen()),
+    );
+  }
+
+  void _navigateToRegister() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const RegistrationScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<QueueProvider>(
-      builder: (context, provider, _) {
-        return CupertinoPageScaffold(
-          child: SafeArea(
-            child: Column(
-              children: [
-                const GlassNavBar(title: 'Q-PREMIUM Operator'),
-                if (provider.error != null)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    color: Colors.red.shade50,
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.red,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            provider.error!,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+    return Scaffold(
+      backgroundColor: AppTheme.darkBg,
+      body: Consumer<QueueProvider>(
+        builder: (context, provider, _) {
+          return Column(
+            children: [
+              GlassNavBar(
+                title: 'Q-PREMIUM',
+                actions: [
+                  NavBarIconButton(
+                    icon: Icons.tv_outlined,
+                    tooltip: 'Layar Monitor',
+                    onPressed: _navigateToMonitor,
                   ),
-                Expanded(
-                  child: provider.isLoading &&
-                          provider.currentCalling == null &&
-                          provider.waitingList.isEmpty
-                      ? const Center(child: CupertinoActivityIndicator())
-                      : _buildContent(provider),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+                  NavBarIconButton(
+                    icon: Icons.person_add_outlined,
+                    tooltip: 'Daftarkan Antrian',
+                    onPressed: _navigateToRegister,
+                  ),
+                ],
+              ),
+              if (provider.error != null)
+                _ErrorBanner(message: provider.error!),
+              Expanded(
+                child: provider.isLoading &&
+                        provider.currentCalling == null &&
+                        provider.waitingList.isEmpty
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.gold,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : _buildContent(provider),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   Widget _buildContent(QueueProvider provider) {
-    final hasCalling = provider.currentCalling != null;
-    final hasWaiting = provider.waitingList.isNotEmpty;
-
-    if (!hasCalling && !hasWaiting) {
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          CallingCard(
-            queueNumber: provider.currentCalling?.queueNumber,
-            queuePrefix: provider.currentCalling?.queuePrefix,
-            customerName: provider.currentCalling?.customerName,
-          ),
-          const SizedBox(height: 16),
-          _buildActionButtons(provider),
-          const SizedBox(height: 24),
-          const Padding(
-            padding: EdgeInsets.all(32),
-            child: Center(
-              child: Text(
-                'Belum ada antrian.\nPelanggan dapat mendaftar melalui layar Registrasi.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: CallingCard(
-            queueNumber: provider.currentCalling?.queueNumber,
-            queuePrefix: provider.currentCalling?.queuePrefix,
-            customerName: provider.currentCalling?.customerName,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildActionButtons(provider),
-        ),
-        if (hasWaiting) ...[
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Daftar Tunggu',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+    return CustomScrollView(
+      slivers: [
+        // Stats Row
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                StatChip(
+                  label: 'Hari Ini',
+                  value: '${provider.totalToday}',
+                  icon: Icons.calendar_today_outlined,
+                  accentColor: AppTheme.gold,
                 ),
+                const SizedBox(width: 10),
+                StatChip(
+                  label: 'Menunggu',
+                  value: '${provider.waitingList.length}',
+                  icon: Icons.hourglass_empty_outlined,
+                  accentColor: AppTheme.warning,
+                ),
+                const SizedBox(width: 10),
+                StatChip(
+                  label: 'Selesai',
+                  value: '${provider.servedToday}',
+                  icon: Icons.check_circle_outline,
+                  accentColor: AppTheme.success,
+                ),
+              ],
+            )
+            .animate()
+            .fadeIn(duration: 400.ms, delay: 100.ms)
+            .slideY(begin: 0.15, end: 0, duration: 400.ms, delay: 100.ms),
+          ),
+        ),
+
+        // Calling Card
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: CallingCard(
+              queueNumber: provider.currentCalling?.queueNumber,
+              queuePrefix: provider.currentCalling?.queuePrefix,
+              customerName: provider.currentCalling?.customerName,
+            ),
+          )
+          .animate()
+          .fadeIn(duration: 400.ms, delay: 200.ms)
+          .slideY(begin: 0.1, end: 0, duration: 400.ms, delay: 200.ms),
+        ),
+
+        // Action Buttons
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _buildActionButtons(provider),
+          )
+          .animate()
+          .fadeIn(duration: 400.ms, delay: 300.ms),
+        ),
+
+        // Waiting List Section
+        if (provider.waitingList.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: AppTheme.gold,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Daftar Tunggu',
+                    style: AppTheme.titleMedium(),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppTheme.gold.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${provider.waitingList.length}',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.gold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 16),
-              itemCount: provider.waitingList.length,
-              itemBuilder: (context, index) {
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
                 final t = provider.waitingList[index];
                 return QueueTile(
                   queueNumber: t.queueNumber,
                   queuePrefix: t.queuePrefix,
                   customerName: t.customerName,
                   status: t.status,
+                )
+                .animate()
+                .fadeIn(
+                  delay: Duration(milliseconds: 350 + index * 50),
+                  duration: 300.ms,
+                )
+                .slideX(
+                  begin: 0.05,
+                  end: 0,
+                  delay: Duration(milliseconds: 350 + index * 50),
+                  duration: 300.ms,
                 );
               },
+              childCount: provider.waitingList.length,
             ),
           ),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
+
+        // Empty state
+        if (provider.waitingList.isEmpty && provider.currentCalling == null)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.inbox_outlined,
+                    size: 48,
+                    color: AppTheme.textMuted,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Antrian Kosong',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Pelanggan dapat mendaftar melalui\nlayar Registrasi.',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 14,
+                      color: AppTheme.textMuted,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              )
+              .animate()
+              .fadeIn(duration: 500.ms, delay: 400.ms),
+            ),
+          ),
       ],
     );
   }
@@ -163,7 +272,8 @@ class _OperatorDashboardScreenState extends State<OperatorDashboardScreen> {
           Expanded(
             child: HapticButton(
               label: _confirmSkip ? 'Yakin Lewati?' : 'Lewati',
-              color: Colors.grey,
+              icon: _confirmSkip ? Icons.warning_outlined : Icons.skip_next,
+              variant: ButtonVariant.ghost,
               onPressed: () {
                 if (!_confirmSkip) {
                   setState(() => _confirmSkip = true);
@@ -177,29 +287,61 @@ class _OperatorDashboardScreenState extends State<OperatorDashboardScreen> {
               },
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: HapticButton(
               label: 'Selesai',
-              icon: Icons.check,
-              color: const Color(0xFF3B82F6),
+              icon: Icons.check_rounded,
+              variant: ButtonVariant.success,
               onPressed: () =>
                   provider.completeCurrent(provider.currentCalling!.id),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
         ],
         Expanded(
           flex: hasCalling ? 2 : 1,
           child: HapticButton(
             label: 'Panggil Berikutnya',
-            icon: Icons.play_arrow,
-            color: const Color(0xFF22C55E),
+            icon: Icons.play_arrow_rounded,
+            variant: ButtonVariant.primary,
             size: ButtonSize.large,
+            isLoading: provider.isLoading,
             onPressed: canCall ? () => provider.callNext() : null,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: AppTheme.dangerDim,
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: AppTheme.danger, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                color: AppTheme.danger,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
