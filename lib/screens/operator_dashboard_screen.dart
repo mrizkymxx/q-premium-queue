@@ -93,29 +93,58 @@ class _OperatorDashboardScreenState extends State<OperatorDashboardScreen> {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: Row(
-              children: [
-                StatChip(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isMobile = constraints.maxWidth < 600;
+                final todayChip = StatChip(
                   label: 'Hari Ini',
                   value: '${provider.totalToday}',
                   icon: Icons.calendar_today_outlined,
                   accentColor: AppTheme.gold,
-                ),
-                const SizedBox(width: 10),
-                StatChip(
+                );
+                final waitChip = StatChip(
                   label: 'Menunggu',
                   value: '${provider.waitingList.length}',
                   icon: Icons.hourglass_empty_outlined,
                   accentColor: AppTheme.warning,
-                ),
-                const SizedBox(width: 10),
-                StatChip(
+                );
+                final servedChip = StatChip(
                   label: 'Selesai',
                   value: '${provider.servedToday}',
                   icon: Icons.check_circle_outline,
                   accentColor: AppTheme.success,
-                ),
-              ],
+                );
+
+                if (isMobile) {
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: todayChip),
+                          const SizedBox(width: 10),
+                          Expanded(child: waitChip),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: servedChip),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: todayChip),
+                    const SizedBox(width: 10),
+                    Expanded(child: waitChip),
+                    const SizedBox(width: 10),
+                    Expanded(child: servedChip),
+                  ],
+                );
+              },
             )
             .animate()
             .fadeIn(duration: 400.ms, delay: 100.ms)
@@ -266,51 +295,78 @@ class _OperatorDashboardScreenState extends State<OperatorDashboardScreen> {
     final hasCalling = provider.currentCalling != null;
     final canCall = provider.canCallNext && provider.waitingList.isNotEmpty;
 
-    return Row(
-      children: [
-        if (hasCalling) ...[
-          Expanded(
-            child: HapticButton(
-              label: _confirmSkip ? 'Yakin Lewati?' : 'Lewati',
-              icon: _confirmSkip ? Icons.warning_outlined : Icons.skip_next,
-              variant: ButtonVariant.ghost,
-              onPressed: () {
-                if (!_confirmSkip) {
-                  setState(() => _confirmSkip = true);
-                  Future.delayed(const Duration(seconds: 3), () {
-                    if (mounted) setState(() => _confirmSkip = false);
-                  });
-                } else {
-                  provider.skipCurrent(provider.currentCalling!.id);
-                  setState(() => _confirmSkip = false);
-                }
-              },
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+
+        final skipBtn = HapticButton(
+          label: _confirmSkip ? 'Yakin Lewati?' : 'Lewati',
+          icon: _confirmSkip ? Icons.warning_outlined : Icons.skip_next,
+          variant: ButtonVariant.ghost,
+          onPressed: () {
+            if (!_confirmSkip) {
+              setState(() => _confirmSkip = true);
+              Future.delayed(const Duration(seconds: 3), () {
+                if (mounted) setState(() => _confirmSkip = false);
+              });
+            } else {
+              provider.skipCurrent(provider.currentCalling!.id);
+              setState(() => _confirmSkip = false);
+            }
+          },
+        );
+
+        final completeBtn = HapticButton(
+          label: 'Selesai',
+          icon: Icons.check_rounded,
+          variant: ButtonVariant.success,
+          onPressed: () =>
+              provider.completeCurrent(provider.currentCalling!.id),
+        );
+
+        final callBtn = HapticButton(
+          label: 'Panggil Berikutnya',
+          icon: Icons.play_arrow_rounded,
+          variant: ButtonVariant.primary,
+          size: ButtonSize.large,
+          isLoading: provider.isLoading,
+          onPressed: canCall ? () => provider.callNext() : null,
+        );
+
+        if (isMobile && hasCalling) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: skipBtn),
+                  const SizedBox(width: 10),
+                  Expanded(child: completeBtn),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: callBtn,
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            if (hasCalling) ...[
+              Expanded(child: skipBtn),
+              const SizedBox(width: 10),
+              Expanded(child: completeBtn),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              flex: hasCalling ? 2 : 1,
+              child: callBtn,
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: HapticButton(
-              label: 'Selesai',
-              icon: Icons.check_rounded,
-              variant: ButtonVariant.success,
-              onPressed: () =>
-                  provider.completeCurrent(provider.currentCalling!.id),
-            ),
-          ),
-          const SizedBox(width: 10),
-        ],
-        Expanded(
-          flex: hasCalling ? 2 : 1,
-          child: HapticButton(
-            label: 'Panggil Berikutnya',
-            icon: Icons.play_arrow_rounded,
-            variant: ButtonVariant.primary,
-            size: ButtonSize.large,
-            isLoading: provider.isLoading,
-            onPressed: canCall ? () => provider.callNext() : null,
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
