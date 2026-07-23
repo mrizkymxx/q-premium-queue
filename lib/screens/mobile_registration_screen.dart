@@ -17,6 +17,36 @@ class _MobileRegistrationScreenState extends State<MobileRegistrationScreen> {
   final _nameController = TextEditingController();
   bool _isSubmitting = false;
   String? _errorText;
+  bool _isExpired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSecurityToken();
+  }
+
+  void _checkSecurityToken() {
+    // Read the query parameters directly from the browser URL
+    final uri = Uri.base;
+    final tParam = uri.queryParameters['t'];
+
+    if (tParam == null) {
+      _isExpired = true;
+      return;
+    }
+
+    final int? timestamp = int.tryParse(tParam);
+    if (timestamp == null) {
+      _isExpired = true;
+      return;
+    }
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Allow up to 45 seconds of leeway from when the QR was generated
+    if (now - timestamp > 45000) {
+      _isExpired = true;
+    }
+  }
 
   @override
   void dispose() {
@@ -64,6 +94,42 @@ class _MobileRegistrationScreenState extends State<MobileRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isExpired) {
+      return Scaffold(
+        backgroundColor: AppTheme.darkBg,
+        body: Column(
+          children: [
+            const GlassNavBar(title: 'Akses Ditolak'),
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.gpp_bad_outlined, color: AppTheme.danger, size: 64)
+                          .animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+                      const SizedBox(height: 24),
+                      Text(
+                        'QR Code Kedaluwarsa',
+                        style: AppTheme.headlineMedium(color: AppTheme.danger),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Demi keamanan, QR Code ini sudah tidak berlaku karena lebih dari 45 detik. Silakan lakukan scan ulang langsung di layar Kiosk lokasi pendaftaran.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontFamily: 'Inter', fontSize: 15, color: AppTheme.textSecondary, height: 1.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       body: Column(

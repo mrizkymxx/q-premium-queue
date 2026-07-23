@@ -1,17 +1,46 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../config/theme_config.dart';
 import '../widgets/glass_nav_bar.dart';
 
-class RegistrationScreen extends StatelessWidget {
+class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Generate the URL dynamically based on the current host
-    final String qrUrl = '${Uri.base.origin}/mobile-register';
+  State<RegistrationScreen> createState() => _RegistrationScreenState();
+}
 
+class _RegistrationScreenState extends State<RegistrationScreen> {
+  Timer? _timer;
+  late String _qrUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateQrCode();
+    // Update QR code every 15 seconds
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _updateQrCode();
+    });
+  }
+
+  void _updateQrCode() {
+    setState(() {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      _qrUrl = '${Uri.base.origin}/mobile-register?t=$timestamp';
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
       body: Column(
@@ -55,12 +84,16 @@ class RegistrationScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: AppTheme.goldGlow(intensity: 0.8),
                       ),
-                      child: QrImageView(
-                        data: qrUrl,
-                        version: QrVersions.auto,
-                        size: 300.0,
-                        backgroundColor: Colors.white,
-                        errorCorrectionLevel: QrErrorCorrectLevel.Q,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: QrImageView(
+                          key: ValueKey(_qrUrl),
+                          data: _qrUrl,
+                          version: QrVersions.auto,
+                          size: 300.0,
+                          backgroundColor: Colors.white,
+                          errorCorrectionLevel: QrErrorCorrectLevel.Q,
+                        ),
                       ),
                     ).animate().scale(delay: 300.ms, duration: 600.ms, curve: Curves.easeOutBack),
                     
@@ -76,10 +109,10 @@ class RegistrationScreen extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.info_outline, color: AppTheme.textSecondary, size: 20),
+                          const Icon(Icons.security, color: AppTheme.success, size: 20),
                           const SizedBox(width: 12),
                           Text(
-                            'Anda akan menerima tiket digital di HP Anda.',
+                            'QR Code diamankan dan diperbarui setiap 15 detik.',
                             style: AppTheme.bodyMedium(),
                           ),
                         ],
