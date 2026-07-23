@@ -99,7 +99,8 @@ $$ language sql;
 
 | URL | Fungsi |
 |---|---|
-| `/` | Dashboard Operator |
+| `/` | Menu Pemilihan Perangkat (Device Selection) |
+| `/dashboard` | Dashboard Operator |
 | `/monitor` | Layar Monitor Publik (TV) |
 | `/register` | Kiosk Pendaftaran Mandiri |
 
