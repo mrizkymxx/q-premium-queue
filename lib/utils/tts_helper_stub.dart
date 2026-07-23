@@ -1,15 +1,40 @@
-/// Stub implementation of [TTSHelper] for non-web platforms.
+import 'dart:async';
+import 'package:flutter_tts/flutter_tts.dart';
+
+/// Native platform implementation of [TTSHelper].
 ///
-/// All calls are no-ops because the Web Speech API is not available
-/// outside of a browser environment.
+/// Uses [flutter_tts] to announce queue numbers in Indonesian.
+/// This file is used on Android, iOS, Windows, macOS, etc.
 class TTSHelper {
-  /// No-op on non-web platforms.
-  static void announce(String prefix, int queueNumber, {int counter = 1}) {
-    // The Web Speech API is unavailable outside the browser.
+  static final FlutterTts _flutterTts = FlutterTts();
+  static bool _isInitialized = false;
+
+  static Future<void> _initTts() async {
+    if (_isInitialized) return;
+    await _flutterTts.setLanguage("id-ID");
+    await _flutterTts.setSpeechRate(0.85); // Adjust rate to match web
+    await _flutterTts.setVolume(1.0);
+    _isInitialized = true;
   }
 
-  /// No-op on non-web platforms.
+  /// Announces [queueNumber] with the given [prefix] at [counter].
+  /// Repeats 3 times to match the web behavior.
+  static Future<void> announce(String prefix, int queueNumber, {int counter = 1}) async {
+    await _initTts();
+    final text = 'Nomor $prefix-$queueNumber silakan menuju loket $counter';
+
+    _flutterTts.speak(text);
+
+    Future.delayed(const Duration(seconds: 4), () {
+      _flutterTts.speak(text);
+    });
+    Future.delayed(const Duration(seconds: 8), () {
+      _flutterTts.speak(text);
+    });
+  }
+
+  /// Immediately cancels any queued or in-progress speech.
   static void cancel() {
-    // The Web Speech API is unavailable outside the browser.
+    _flutterTts.stop();
   }
 }
